@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  cloud-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.cloud
+    container_name: cloud-computing-server
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - FLASK_ENV=production
+      - ML_CONFIG_PATH=/app/ml_model_config.json
+    # Model is trained during Docker build, so no volume mount needed
+    # The model config is baked into the image at /app/ml_model_config.json
+    # If you want to update model without rebuild, first run: python ml/train_model.py
+    # Then uncomment the volume mount below:
+    # volumes:
+    #   - ./ml/ml_model_config.json:/app/ml_model_config.json:ro
+    networks:
+      - vvv-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: cloud-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - CLOUD_URL=http://cloud-server:5000
+    depends_on:
+      - cloud-server
+    networks:
+      - vvv-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  benchmark-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: benchmark-service
+    ports:
+      - "5001:5001"
+    volumes:
+      - ../exp1_latency_results.csv:/app/benchmarks/exp1_latency_results.csv:ro
+      - ../exp2_depth_results.csv:/app/benchmarks/exp2_depth_results.csv:ro
+      - ../exp3_threading_results.csv:/app/benchmarks/exp3_threading_results.csv:ro
+    networks:
+      - vvv-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  admin-panel:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+    container_name: admin-panel
+    ports:
+      - "8502:8502"
+    environment:
+      - CLOUD_URL=http://cloud-server:5000
+      - BENCHMARK_URL=http://benchmark-service:5001
+    depends_on:
+      - cloud-server
+      - benchmark-service
+    networks:
+      - vvv-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8502/_stcore/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  vvv-network:
+    driver: bridge
+    name: vvv-network
+
+volumes:
+  ml_model_data:
+    driver: local
+

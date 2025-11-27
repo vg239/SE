@@ -1,0 +1,41 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy shared library - ensure it's accessible from Python path
+RUN mkdir -p shared
+COPY shared/mibfhe_lib.py ./shared/
+# Verify the file exists
+RUN test -f ./shared/mibfhe_lib.py && echo "Shared library copied successfully" || echo "ERROR: Shared library not found"
+
+# Copy ML training script and train model
+COPY ml/train_model.py ./ml/
+COPY ml/requirements.txt ./ml/
+RUN pip install --no-cache-dir -r ml/requirements.txt
+# Train model during build - this creates /app/ml_model_config.json
+# Remove any existing directory with this name (shouldn't exist, but safety check)
+RUN rm -rf /app/ml_model_config.json 2>/dev/null || true
+RUN python ml/train_model.py && \
+    test -f /app/ml_model_config.json && echo "Model config file created successfully" || echo "WARNING: Model config file not created"
+
+# Copy backend application
+COPY backend/cloud_server.py .
+
+# Expose Flask port
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:5000/health')" || exit 1
+
+# Run Flask server
+CMD ["python", "cloud_server.py"]

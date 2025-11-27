@@ -1,0 +1,12 @@
+# Valid Users Database
+# Format: name:uid:pincode
+# One entry per line
+# Lines starting with # are comments
+# This file is used to generate ZK commitments for the backend database
+
+Vatsal:123456789012:575025
+Alice:123456789012:560001
+Bob:987654321098:110001
+Charlie:111122223333:400001
+Diana:444455556666:700001
+
