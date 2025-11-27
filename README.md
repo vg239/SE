@@ -2,6 +2,16 @@
 
 A comprehensive demonstration of Privacy-Preserving Machine Learning on Homomorphic Encryption and Zero-Knowledge Proofs for Cloud Computing, with a focus on Aadhaar identity verification.
 
+## Media 
+### This depicts the initial part of the generation of the MIBFHE keys
+<img src='/media/client_side_1.png'></img>
+
+### This represents the formation of the zk proofs here
+<img src='/media/client_side_2.png'></img>
+
+### This shows the ML risk score being generated from the existing model trained and response from the cloud server
+<img src='/media/client_side_3.png'></img>
+
 ## Overview
 
 This implementation demonstrates:
